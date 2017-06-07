@@ -4,6 +4,23 @@ module.exports = function (server, restify, restifyValidator) {
     server.use(restify.bodyParser());
     server.use(restifyValidator);
 
+    // IP Whitelisting
+    server.use(function (req, res, next) {
+        var whitelistedIps = ['111.222.333.444'];
+        var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        if (whitelistedIps.indexOf(ip) === -1) {
+            var response = {
+                'status': 'failure',
+                'data': 'Invalid IP Address'
+            };
+            res.setHeader('content-type', 'application/json');
+            res.writeHead(403);
+            res.end(JSON.stringify(response));
+            return next();
+        }
+        return next();
+    });
+
     // BasicAuth
     server.use(restify.authorizationParser());
     server.use(function (req, res, next) {
@@ -23,11 +40,11 @@ module.exports = function (server, restify, restifyValidator) {
         return next();
     });
 
-    server.use(function (req, res, next) {
-        var whitelistedIps = ['111.222.333.444'];
-        var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-
-    });
+    // API Throttling
+    server.use(restify.throttle({
+        rate: 1,
+        burst: 2,
+        xff: true
+    }))
 
 };
